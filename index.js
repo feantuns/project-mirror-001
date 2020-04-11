@@ -4,7 +4,7 @@ const {
   useEffect,
   style,
   Fragment,
-  fowardRef,
+  forwardRef,
   Component,
   createRef,
 } = React;
@@ -77,7 +77,7 @@ const animateSlide = (
     .add(setSlidingState, 1.1);
 };
 
-// ANIMATE SLIDER WHEN WXPAND BUTTON IS CLICKED
+// ANIMATE SLIDER WHEN EXPAND BUTTON IS CLICKED
 const animateSliderOut = () => {
   const tl = gsap.timeline({ onComplete: () => {} });
   tl.to(
@@ -141,7 +141,19 @@ const animateOverlayIn = (overlay, navbar, setExpandingState) => {
         "clip-path": "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)",
       },
       {
-        "clip-path": "polyfon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+        "clip-path": "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+        duration: 0.48,
+        ease: "power1.inOut",
+      },
+      "in"
+    )
+    .fromTo(
+      ".overlay-nav-buttons",
+      {
+        "clip-path": "polygon(0% 0%, 100% 0%, 100% 0%, 0% 0%)",
+      },
+      {
+        "clip-path": "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
         duration: 0.48,
         ease: "power1.inOut",
       },
@@ -193,7 +205,7 @@ const animateOverlayIn = (overlay, navbar, setExpandingState) => {
 const animateOverlayOut = (overlay, navbar, callback) => {
   const tl = gsap.timeline({
     onComplete: () => {
-      gsap.set(overlay, { visbility: "hidden" });
+      gsap.set(overlay, { visibility: "hidden" });
     },
   });
   tl.to(
@@ -267,7 +279,7 @@ const animateImg = (overlay, callback, navbar) => {
       {
         opacity: 0,
         onComplete: () => {
-          gsap.set(overlay, { visbility: "hidden" });
+          gsap.set(overlay, { visibility: "hidden" });
         },
       },
       "animate+=0.32"
@@ -297,3 +309,572 @@ const animateImg = (overlay, callback, navbar) => {
     // animating the navbar
     .to(navbar, { y: 0 }, 0.4);
 };
+
+const animatePreview = (x, slideCount, numberTransform) => {
+  const tl = gsap.timeline({ defaults: { duration: 0.4 } });
+  tl
+    // overlay
+    .to(".overlay-preview-wrap", { "padding-left": "0px", x: x, width: "400%" })
+    // sidebar
+    .set(".slider-container", {
+      background: `https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/${slideCount}.jpg') center center / cover`,
+    })
+    .set(".number-wrap", { y: numberTransform })
+    .set(".title-wrap", { y: numberTransform })
+    .set(".slide-info", { y: numberTransform });
+};
+
+const SlidePreview = forwardRef((props, ref) => {
+  return (
+    <div
+      className="overlay-slide-preview"
+      style={props.styles}
+      onClick={props.click}
+      ref={ref}
+      id={props.id}
+    >
+      <h4 className="overlay-preview-title">
+        <span className="overlay-preview-title-number">{props.number}</span>
+        <span className="overlay-preview-title-text">{props.category}</span>
+      </h4>
+    </div>
+  );
+});
+
+const Toggle = () => {
+  const getTheme = string => {
+    return window.localStorage.getItem("theme") === string;
+  };
+  const setTheme = () => {
+    if (getTheme("dark")) {
+      gsap.set(":root", {
+        "--bg-color": "#211f1f",
+        "--text-color-alt": "#FFF",
+        duration: 0.32,
+      });
+      // set toggle position depending on theme state
+      gsap.set(".theme-toggle span", { x: 12 });
+    } else {
+      window.localStorage.setItem("theme", "light");
+    }
+  };
+  const toggleTheme = () => {
+    if (getTheme("") || getTheme("light")) {
+      gsap.to(":root", {
+        "--bg-color": "#211f1f",
+        "--text-color-alt": "#FFF",
+        duration: 0.32,
+      });
+      gsap.to(".theme-toggle span", { x: 12, duration: 0.24 });
+      window.localStorage.setItem("theme", "dark");
+    } else {
+      gsap.to(":root", {
+        "--bg-color": "#FFF",
+        "--text-color-alt": "#000",
+        "--grey": "#808080",
+      });
+      gsap.to(".theme-toggle span", { x: 0, duration: 0.24 });
+      window.localStorage.setItem("theme", "light");
+    }
+  };
+  useEffect(() => {
+    getTheme();
+    setTheme();
+  });
+
+  return (
+    <button
+      className="theme-toggle"
+      role="switch"
+      aria-checked="true"
+      onClick={toggleTheme}
+    >
+      <span></span>
+    </button>
+  );
+};
+
+const Overlay = forwardRef((props, ref) => {
+  const [images] = useState([
+    { id: "1", category: "Nature.", number: "01." },
+    { id: "2", category: "Office.", number: "02." },
+    { id: "3", category: "Extension.", number: "03." },
+    { id: "4", category: "Custom.", number: "04." },
+  ]);
+
+  const slideRef = useRef([]);
+
+  useEffect(() => {
+    // Enable dragging
+    new Draggable(".overlay-preview-wrap", {
+      type: "x",
+      bounds: ".overlay-slide-container",
+      dragResistance: 0.55,
+      inertia: true,
+      throwResistance: 3500,
+      onDrag: () => {
+        gsap.set(".overlay-slide-preview", { cursor: "grab" });
+      },
+      onDragEnd: () => {
+        gsap.set(".overlay-slide-preview", { cursor: "pointer" });
+      },
+    });
+  }, []);
+
+  const slides = images.map(item => {
+    return (
+      <SlidePreview
+        key={item.id}
+        styles={{
+          background: `url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/${item.id}.jpg) center center / cover`,
+        }}
+        id={`preview-${item.id}`}
+        click={props.imgClick}
+        number={item.number}
+        category={item.category}
+        ref={slide => (slideRef.current[item] = slide)}
+      />
+    );
+  });
+
+  return (
+    <Fragment>
+      <div ref={ref} className="overlay">
+        <div className="overlay-bg"></div>
+        <div className="overlay-navigation">
+          <div className="overlay-nav-heading">
+            <h3 className="overlay-title">Select your purpose</h3>
+            <h4 className="overlay-sub">You can drag and click to select</h4>
+          </div>
+          <nav className="overlay-nav-buttons">
+            <Toggle />
+            <button className="overlay-close" onClick={props.close}>
+              Close
+            </button>
+          </nav>
+        </div>
+        <div className="overlay-slide-container">
+          <div className="overlay-preview-wrap">{slides}</div>
+        </div>
+      </div>
+    </Fragment>
+  );
+});
+
+const Preloader = forwardRef((props, ref) => {
+  const boxRef = useRef();
+  const box2Ref = useRef();
+  const textRef = useRef();
+  useEffect(() => {
+    const tl = gsap.timeline({ repeat: -1, repeatDelay: 0.2 });
+    tl.to(textRef.current, { opacity: 0, duration: 0.4 }, "o")
+      .to(
+        boxRef.current,
+        {
+          "clip-path": "polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%)",
+          duration: 0.4,
+        },
+        "o"
+      )
+      .to(boxRef.current, {
+        "clip-path": "polygon(0% 0%, 0% 0%, 0% 100%, 0% 100%)",
+        duration: 0.4,
+      })
+      .to(textRef.current, { opacity: 1, duration: 0.4 }, "n")
+      .to(
+        box2Ref.current,
+        {
+          "clip-path": "polygon(100% 0%, 0% 0%, 0% 100%, 100% 100%)",
+          duration: 0.4,
+        },
+        "n"
+      )
+      .to(
+        box2Ref.current,
+        {
+          "clip-path": "polygon(100% 0%, 100% 0%, 100% 100%, 100% 100%)",
+          duration: 0.4,
+        },
+        "m"
+      );
+  }, []);
+  return (
+    <div className="preloader" ref={ref}>
+      <div className="box">
+        <p ref={textRef}>Loading...</p>
+        <div className="box-clip" ref={boxRef}></div>
+        <div className="box-clip2" ref={box2Ref}></div>
+      </div>
+    </div>
+  );
+});
+
+const Navbar = forwardRef((props, ref) => {
+  useEffect(() => {
+    let theme = window.localStorage.getItem("theme");
+    if (theme === "light") {
+      ref.current.dataset.theme = "light";
+    }
+    if (theme === "dark") {
+      ref.current.dataset.theme = "dark";
+    }
+  });
+
+  const toggleNav = () => {
+    ref.current.dataset.expanded === "false"
+      ? (ref.current.dataset.expanded = "true")
+      : (ref.current.dataset.expanded = "false");
+    ref.current.dataset.expanded === "true"
+      ? gsap.fromTo(
+          ref.current,
+          { height: "40px" },
+          { height: "100%", duration: 0.4 }
+        )
+      : gsap.to(ref.current, { height: "40px", duration: 0.4 });
+  };
+
+  return (
+    <header>
+      <nav
+        className="navbar"
+        ref={ref}
+        data-test="component-navbar"
+        data-theme="light"
+        data-expanded="false"
+      >
+        <button
+          className="navbar-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-label="Toggle navigation"
+          onClick={toggleNav}
+        >
+          <span className="toggle-bar"></span>
+          <span className="toggle-bar"></span>
+          <span className="toggle-bar"></span>
+        </button>
+        <div className="brand">
+          <a href="/">ARK-SHELTER</a>
+        </div>
+        <div className="nav-center">
+          <ul>
+            <li>
+              <a href="#" className="nav-item">
+                Home
+              </a>
+            </li>
+            <li>
+              <a href="#" className="nav-item">
+                Nature
+              </a>
+            </li>
+            <li>
+              <a href="#" className="nav-item">
+                Offices
+              </a>
+            </li>
+            <li>
+              <a href="#" className="nav-item">
+                Extension
+              </a>
+            </li>
+            <li>
+              <a href="#" className="nav-item">
+                Custom
+              </a>
+            </li>
+            <li>
+              <a href="#" className="nav-item">
+                About
+              </a>
+            </li>
+          </ul>
+        </div>
+        <div className="nav-right">
+          <a href="#" className="nav-item">
+            Contact
+          </a>
+        </div>
+      </nav>
+    </header>
+  );
+});
+
+const SliderControls = forwardRef((props, ref) => {
+  return (
+    <div ref={ref} className="slider-controls">
+      <button className="slide-prev-btn" onClick={props.prev}></button>
+      <button className="slide-next-btn" onClick={props.next}></button>
+      <button className="slide-overlay-btn" onClick={props.expand}></button>
+    </div>
+  );
+});
+
+class App extends Component {
+  state = {
+    slides: [
+      {
+        id: "1",
+        title: "Back to nature.",
+        slideNumber: "01",
+        text: "Discover nature.",
+        image: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/1.jpg",
+      },
+      {
+        id: "2",
+        title: "Chill in the office.",
+        slideNumber: "02",
+        text: "Step into your office.",
+        image: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/2.jpg",
+      },
+      {
+        id: "3",
+        title: "From dreams to reality.",
+        slideNumber: "03",
+        text: "Go big or go home.",
+        image: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/3.jpg",
+      },
+      {
+        id: "4",
+        title: "Make a wish.",
+        slideNumber: "04",
+        text: "Push it to the limit.",
+        image: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/4.jpg",
+      },
+    ],
+    isExpanded: false,
+    slideCount: 1,
+    isSliding: false,
+    isExpanding: false,
+    isShrinking: false,
+    imgsLoaded: 0,
+    isLoaded: false,
+  };
+
+  titleWrapRef = createRef();
+  numberWrapRef = createRef();
+  navbar = createRef();
+  overlay = createRef();
+  sliderContainer = createRef();
+  controlsRef = createRef();
+  preloaderRef = createRef();
+  imageRef = createRef();
+
+  loadImages = () => {
+    this.setState(prevState => ({
+      imgsLoaded: prevState.imgsLoaded + 1,
+    }));
+    if (this.state.imgsLoaded === 3) {
+      gsap.to(this.preloaderRef.current, {
+        y: "-100%",
+        duration: 1,
+        onStart: () => {
+          // Animate the different elements in
+          onloadAnimation(this.controlsRef.current);
+        },
+        onComplete: () => {
+          gsap.set(this.preloaderRef.current, { display: "none" });
+          this.setState({ isLoaded: true });
+        },
+      });
+    }
+  };
+
+  expand = () => {
+    // Expand Overlay
+    if (
+      !this.state.isExpanded &&
+      !this.state.isExpanding &&
+      !this.state.isSliding
+    ) {
+      this.setState({ isExpanding: !this.state.isExpanding }, () => {
+        animateSliderOut();
+        animateOverlayIn(this.overlay.current, this.navbar.current, () => {
+          this.setState({ isExpanding: false, isExpanded: true });
+        });
+      });
+    }
+    // Hide Overlay
+    if (
+      this.state.isExpanded &&
+      !this.state.isExpanding &&
+      !this.state.isSliding
+    ) {
+      this.setState({ isExpanding: !this.state.isExpanding }, () => {
+        animateOverlayOut(this.overlay.current, this.navbar.current, () => {
+          this.setState({ isExpanding: false, isExpanded: false });
+        });
+      });
+    }
+  };
+
+  prevSlide = () => {
+    if (this.state.slideCount >= 2 && !this.state.isSliding) {
+      this.setState(
+        prevState => ({
+          slideCount: prevState.slideCount - 1,
+          isSliding: true,
+        }),
+        () => {
+          gsap.set(this.sliderContainer.current, {
+            background: `url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/${this.state.slideCount}.jpg) center center / cover`,
+          });
+          animateSlide(
+            this.titleWrapRef.current,
+            this.numberWrapRef.current,
+            () => this.setState({ isSliding: false }),
+            "+=100%"
+          );
+        }
+      );
+    }
+  };
+
+  nextSlide = () => {
+    if (this.state.slideCount <= 3 && !this.state.isSliding) {
+      this.setState(
+        prevState => ({
+          slideCount: prevState.slideCount + 1,
+          isSliding: true,
+        }),
+        () => {
+          gsap.set(this.sliderContainer.current, {
+            background: `url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/${this.state.slideCount}.jpg) center center / cover`,
+          });
+          animateSlide(
+            this.titleWrapRef.current,
+            this.numberWrapRef.current,
+            () => this.setState({ isSliding: false }),
+            "-=100%"
+          );
+        }
+      );
+    }
+  };
+
+  animateImgClick = e => {
+    if (!this.state.isShrinking) {
+      this.setState({ isShrinking: true }, () =>
+        animateImg(
+          this.overlay.current,
+          () =>
+            this.setState({
+              isExpanded: !this.state.isExpanded,
+              isShrinking: false,
+            }),
+          this.navbar.current
+        )
+      );
+      // Updating the sliders position based on what image was clicked in the overlay
+      if (e.currentTarget.id === "preview-1") {
+        this.setState({ slideCount: 1 }, () => animatePreview(0, 1, "0%"));
+      }
+      if (e.currentTarget.id === "preview-2") {
+        this.setState({ slideCount: 2 }, () =>
+          animatePreview("-25%", 2, "-100%")
+        );
+      }
+      if (e.currentTarget.id === "preview-3") {
+        this.setState({ slideCount: 3 }, () =>
+          animatePreview("-50%", 3, "-200%")
+        );
+      }
+      if (e.currentTarget.id === "preview-4") {
+        this.setState({ slideCount: 4 }, () =>
+          animatePreview("-75%", 4, "-300%")
+        );
+      }
+    }
+  };
+
+  render() {
+    const slideNumbers = this.state.slides.map(item => {
+      return (
+        <span className="slide-number" key={item.id}>
+          {item.slideNumber}
+        </span>
+      );
+    });
+
+    const slideTitles = this.state.slides.map(item => {
+      return (
+        <h1 className="slide-title" key={item.id}>
+          {item.title}
+        </h1>
+      );
+    });
+
+    const slideText = this.state.slides.map(item => {
+      return (
+        <h3 className="slide-info" key={item.id}>
+          {item.text}
+        </h3>
+      );
+    });
+
+    const images = this.state.slides.map(item => {
+      return (
+        <img
+          className="img-hidden"
+          src={item.image}
+          key={item.id}
+          ref={img => (this.imageRef = img)}
+          onLoad={this.loadImages}
+          alt=""
+        />
+      );
+    });
+
+    return (
+      <div className="App">
+        {!this.state.isLoaded ? <Preloader ref={this.preloaderRef} /> : null}
+        <Navbar ref={this.navbar}></Navbar>
+        {images}
+        <div
+          className="slider-container"
+          ref={this.sliderContainer}
+          style={{
+            background: `url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/590856/${this.state.slideCount}.jpg) center center / cover`,
+          }}
+        >
+          <div className="slider-text-container">
+            <div className="slide-number-container">
+              <div className="number-wrap" ref={this.numberWrapRef}>
+                {slideNumbers}
+              </div>
+              <span className="slide-number-small">/ 04</span>
+            </div>
+            <div className="slide-title-container">
+              <div className="title-wrap" ref={this.titleWrapRef}>
+                {slideTitles}
+              </div>
+            </div>
+            <SliderControls
+              prev={this.prevSlide}
+              next={this.nextSlide}
+              expand={this.expand}
+              ref={this.controlsRef}
+            />
+          </div>
+          <div className="slide-info-container">
+            <div className="slide-info-text">
+              <div className="slide-info-wrap">{slideText}</div>
+              <h4>Scroll for more</h4>
+            </div>
+          </div>
+          <div className="slide-info-box">
+            <a href="/#">Need more info &amp; prices?</a>
+            <h4>Download our brochure now</h4>
+          </div>
+        </div>
+        <Overlay
+          close={this.expand}
+          ref={this.overlay}
+          imgClick={e => this.animateImgClick(e)}
+        />
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(<App />, document.getElementById("app"));
